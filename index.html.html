@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Surat Masuk Keluar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            transition: all 0.2s ease;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .floating-input {
+            transition: all 0.3s ease;
+        }
+        .floating-input:focus-within {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .file-preview {
+            max-width: 100%;
+            max-height: 200px;
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 py-8 flex-grow">
+        <!-- Header -->
+        <header class="mb-8 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm p-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <i class="fas fa-archive text-indigo-600 text-3xl mr-3"></i>
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">Persuratan BKDD Kab. Sorong</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <input type="text" id="searchInput" placeholder="Cari surat..." 
+                            class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                            oninput="handleSearchInput()">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                    <button onclick="resetFilter()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition">
+                        Reset Filter
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Form Input -->
+            <div class="lg:col-span-1 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 h-fit sticky top-4 border border-white/20">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Tambah Surat Baru</h2>
+                <form id="suratForm" class="space-y-4">
+                    <div class="floating-input">
+                        <label for="nomorSurat" class="block text-sm font-medium text-gray-700">Nomor Surat</label>
+                        <input type="text" id="nomorSurat" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="floating-input">
+                        <label for="tanggal" class="block text-sm font-medium text-gray-700">Tanggal</label>
+                        <input type="date" id="tanggal" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="floating-input">
+                        <label for="perihal" class="block text-sm font-medium text-gray-700">Perihal</label>
+                        <input type="text" id="perihal" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="floating-input">
+                        <label for="pengirim" class="block text-sm font-medium text-gray-700">Pengirim/Penerima</label>
+                        <input type="text" id="pengirim" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="floating-input">
+                        <label for="nomorKontak" class="block text-sm font-medium text-gray-700">Nomor Kontak</label>
+                        <input type="tel" id="nomorKontak"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Format: 0812-3456-7890">
+                    </div>
+
+                    <div class="floating-input">
+                        <label for="jenisSurat" class="block text-sm font-medium text-gray-700">Jenis Surat</label>
+                        <select id="jenisSurat" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="" disabled selected>Pilih Jenis Surat</option>
+                            <option value="masuk">Surat Masuk</option>
+                            <option value="keluar">Surat Keluar</option>
+                        </select>
+                    </div>
+
+                    <div class="floating-input hidden" id="tipeSuratContainer">
+                        <label for="tipeSurat" class="block text-sm font-medium text-gray-700">Tipe Surat</label>
+                        <select id="tipeSurat"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="biasa">Biasa</option>
+                            <option value="penting">Penting</option>
+                            <option value="rahasia">Rahasia</option>
+                        </select>
+                    </div>
+
+                    <div class="floating-input">
+                        <label for="fileSurat" class="block text-sm font-medium text-gray-700">File Surat (PDF/Image)</label>
+                        <div class="file-input-wrapper mt-1">
+                            <button type="button" class="w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 text-left hover:bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <span id="fileName">Pilih File</span>
+                                <i class="fas fa-paperclip ml-2"></i>
+                            </button>
+                            <input type="file" id="fileSurat" accept=".pdf,.jpg,.jpeg,.png" class="hidden">
+                        </div>
+                        <div id="filePreview" class="file-preview bg-gray-100 rounded-lg p-2">
+                            <span id="previewText" class="text-sm text-gray-600 inline-block truncate w-full"></span>
+                            <img id="imagePreview" class="mt-2 max-h-40 mx-auto" style="display:none;">
+                        </div>
+                    </div>
+
+                    <div class="floating-input">
+                        <label for="keterangan" class="block text-sm font-medium text-gray-700">Keterangan</label>
+                        <textarea id="keterangan" rows="3"
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-medium py-3 px-4 rounded-lg shadow-sm transition-all duration-300 hover:shadow-md">
+                        <i class="fas fa-save mr-2"></i>Simpan Surat
+                    </button>
+                </form>
+            </div>
+
+            <!-- Daftar Surat -->
+            <div class="lg:col-span-2">
+                <!-- Tab Navigasi -->
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex border-b border-gray-200">
+                        <button onclick="filterSurat('all', document.getElementById('arsipFilter').value)" id="tabAll" class="px-4 py-2 font-medium text-blue-600 border-b-2 border-blue-600">
+                            Semua Surat
+                        </button>
+                        <button onclick="filterSurat('masuk', document.getElementById('arsipFilter').value)" id="tabMasuk" class="px-4 py-2 font-medium text-gray-500 hover:text-gray-700">
+                            Surat Masuk
+                        </button>
+                        <button onclick="filterSurat('keluar', document.getElementById('arsipFilter').value)" id="tabKeluar" class="px-4 py-2 font-medium text-gray-500 hover:text-gray-700">
+                            Surat Keluar
+                        </button>
+                    </div>
+                    <select id="arsipFilter" onchange="filterSurat(document.querySelector('.border-b-2').getAttribute('onclick').split('(')[1].split(',')[0].replace(/'/g, ''), this.value)" 
+                        class="border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Semua Status</option>
+                        <option value="arsip">Arsip Saja</option>
+                        <option value="non-arsip">Non Arsip</option>
+                    </select>
+                </div>
+
+                <!-- Statistik -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm p-4 flex items-center border border-white/20">
+                        <div class="p-3 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-600 mr-4">
+                            <i class="fas fa-inbox text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Total Surat</p>
+                            <p class="text-xl font-bold" id="totalSurat">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4 flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                            <i class="fas fa-sign-in-alt text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Surat Masuk</p>
+                            <p class="text-xl font-bold" id="totalMasuk">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4 flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
+                            <i class="fas fa-sign-out-alt text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Surat Keluar</p>
+                            <p class="text-xl font-bold" id="totalKeluar">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4 flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-600 mr-4">
+                            <i class="fas fa-archive text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Di Arsipkan</p>
+                            <p class="text-xl font-bold" id="totalArsip">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Penarikan Data -->
+                <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Penarikan Data Statistik</h2>
+                    <div class="flex flex-col md:flex-row gap-4 items-end">
+                        <div class="flex-1 w-full">
+                            <label for="reportType" class="block text-sm font-medium text-gray-700">Tipe Laporan</label>
+                            <select id="reportType" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="monthly">Bulanan</option>
+                                <option value="yearly">Tahunan</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 w-full" id="monthSelectContainer">
+                            <label for="reportMonth" class="block text-sm font-medium text-gray-700">Bulan</label>
+                            <select id="reportMonth" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="01">Januari</option>
+                                <option value="02">Februari</option>
+                                <option value="03">Maret</option>
+                                <option value="04">April</option>
+                                <option value="05">Mei</option>
+                                <option value="06">Juni</option>
+                                <option value="07">Juli</option>
+                                <option value="08">Agustus</option>
+                                <option value="09">September</option>
+                                <option value="10">Oktober</option>
+                                <option value="11">November</option>
+                                <option value="12">Desember</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 w-full">
+                            <label for="reportYear" class="block text-sm font-medium text-gray-700">Tahun</label>
+                            <select id="reportYear" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
+                        </div>
+                        <button onclick="generateReport()" class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition duration-300">
+                            <i class="fas fa-chart-bar mr-2"></i>Tarik Data
+                        </button>
+                        <button onclick="saveAllSuratToPC()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition duration-300 ml-2">
+                            <i class="fas fa-download mr-2"></i>Simpan Semua Surat
+                        </button>
+                        <button onclick="saveSelectedSuratToZip()" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition duration-300 ml-2">
+                            <i class="fas fa-file-archive mr-2"></i>Simpan Surat Terpilih (ZIP)
+                        </button>
+                    </div>
+                    <div id="reportResult" class="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200 hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Hasil Laporan</h3>
+                            <button onclick="exportToExcel()" class="flex items-center text-sm bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded">
+                                <i class="fas fa-file-excel mr-1"></i> Export Excel
+                            </button>
+                        </div>
+                        <p class="text-gray-700">Total Surat Masuk: <span id="reportMasuk" class="font-bold">0</span></p>
+                        <p class="text-gray-700">Total Surat Keluar: <span id="reportKeluar" class="font-bold">0</span></p>
+                    </div>
+                </div>
+
+                <!-- Tabel Surat -->
+                <div class="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden border border-white/20">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <input type="checkbox" id="selectAllSurat" onchange="toggleAllCheckboxes(this.checked)">
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No.</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Surat</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perihal</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="suratTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Data akan diisi oleh JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="text-center py-12 hidden">
+                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8c5b3113-75a4-4b9f-a9f8-e80c359850bd.png" alt="Ilustrasi dokumen kosong" class="mx-auto mb-4 rounded-xl w-64 opacity-80">
+                    <h3 class="text-lg font-medium text-gray-900">Belum ada surat</h3>
+                    <p class="mt-1 text-sm text-gray-500">Mulai dengan menambahkan surat baru menggunakan form di samping.</p>
+                    <button onclick="document.getElementById('jenisSurat').focus()" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Tambah Surat Pertama
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center p-4 mt-8">
+        <p class="text-sm">&copy; 2025 Badan Kepegawaian Pendidikan dan Pelatihan Daerah Kabupaten Sorong.</p>
+    </footer>
+
+    <!-- Modal Hapus -->
+    <div id="deleteModal" class="fixed inset-0 z-10 overflow-y-auto hidden">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <i class="fas fa-exclamation-triangle text-red-600"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modalTitle">Hapus Surat</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500">Apakah Anda yakin ingin menghapus surat <span id="suratToDelete" class="font-medium"></span>? Aksi ini tidak dapat dibatalkan.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="confirmDelete" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Hapus
+                    </button>
+                    <button type="button" onclick="document.getElementById('deleteModal').classList.add('hidden')" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal File Surat -->
+    <div id="fileModal" class="fixed inset-0 z-10 overflow-y-auto hidden">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="fileModalTitle">Detail File Surat</h3>
+                            <div class="mt-2 w-full">
+                                <div id="fileModalContent" class="flex flex-col items-center">
+                                    <!-- Content will be inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" onclick="document.getElementById('fileModal').classList.add('hidden')" class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inisialisasi data jika belum ada
+        if (!localStorage.getItem('suratData')) {
+            localStorage.setItem('suratData', JSON.stringify([]));
+        }
+
+        // DOM Elements
+        const suratForm = document.getElementById('suratForm');
+        const fileInput = document.getElementById('fileSurat');
+        const fileNameSpan = document.getElementById('fileName');
+        const filePreviewDiv = document.getElementById('filePreview');
+        const previewText = document.getElementById('previewText');
+        const imagePreview = document.getElementById('imagePreview');
+        const jenisSuratSelect = document.getElementById('jenisSurat');
+        const tipeSuratContainer = document.getElementById('tipeSuratContainer');
+
+        // DOM Elements for Report
+        const reportTypeSelect = document.getElementById('reportType');
+        const reportMonthSelect = document.getElementById('reportMonth');
+        const reportYearSelect = document.getElementById('reportYear');
+        const monthSelectContainer = document.getElementById('monthSelectContainer');
+        const reportResultDiv = document.getElementById('reportResult');
+        const reportMasukSpan = document.getElementById('reportMasuk');
+        const reportKeluarSpan = document.getElementById('reportKeluar');
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSuratData();
+            updateStatistik();
+            populateReportYears(); // Initialize years for report
+            // Set default month to current month
+            const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+            reportMonthSelect.value = currentMonth;
+        });
+
+        // Toggle Tipe Surat Container
+        jenisSuratSelect.addEventListener('change', function() {
+            tipeSuratContainer.classList.toggle('hidden', this.value === '');
+        });
+
+        // File Input Handling
+        document.querySelector('.file-input-wrapper button').addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                fileNameSpan.textContent = file.name;
+                filePreviewDiv.style.display = 'block';
+                previewText.textContent = file.name;
+
+                // Check if file is image
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        imagePreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    imagePreview.style.display = 'none';
+                }
+            } else {
+                filePreviewDiv.style.display = 'none';
+                fileNameSpan.textContent = 'Pilih File';
+            }
+        });
+
+        // Form Submission
+        suratForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Get form values
+            const nomorSurat = document.getElementById('nomorSurat').value;
+            const tanggal = document.getElementById('tanggal').value;
+            const perihal = document.getElementById('perihal').value;
+            const pengirim = document.getElementById('pengirim').value;
+            const jenisSurat = document.getElementById('jenisSurat').value;
+            const tipeSurat = document.getElementById('tipeSurat').value;
+            const keterangan = document.getElementById('keterangan').value;
+            const file = fileInput.files[0];
+
+            // Generate ID
+            const id = Date.now();
+
+            // Read file as base64 if exists
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const fileData = {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: e.target.result.split(',')[1]
+                    };
+                    saveSurat(id, nomorSurat, tanggal, perihal, pengirim, jenisSurat, tipeSurat, keterangan, fileData);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                saveSurat(id, nomorSurat, tanggal, perihal, pengirim, jenisSurat, tipeSurat, keterangan, null);
+            }
+        });
+
+        // Save Surat to localStorage
+        function saveSurat(id, nomorSurat, tanggal, perihal, pengirim, jenisSurat, tipeSurat, keterangan, fileData) {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const existingIndex = suratData.findIndex(s => s.id === id);
+
+            const newSurat = {
+                id,
+                nomorSurat,
+                tanggal,
+                perihal,
+                pengirim,
+                nomorKontak: document.getElementById('nomorKontak').value,
+                jenisSurat,
+                tipeSurat,
+                keterangan,
+                file: fileData,
+                arsip: false,
+                createdAt: new Date().toISOString(),
+                lastNotified: null
+            };
+
+            if (existingIndex >= 0) {
+                suratData[existingIndex] = newSurat;
+            } else {
+                suratData.push(newSurat);
+            }
+
+            localStorage.setItem('suratData', JSON.stringify(suratData));
+            loadSuratData();
+            updateStatistik();
+            suratForm.reset();
+            fileInput.value = '';
+            fileNameSpan.textContent = 'Pilih File';
+            filePreviewDiv.style.display = 'none';
+            imagePreview.style.display = 'none';
+            tipeSuratContainer.classList.add('hidden');
+
+            // Scroll to table
+            document.getElementById('suratTableBody').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Load Surat Data with search
+        function loadSuratData(filterJenis = 'all', filterArsip = 'all', searchTerm = '') {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const suratTableBody = document.getElementById('suratTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const selectAllCheckbox = document.getElementById('selectAllSurat');
+
+
+            // Clear table
+            suratTableBody.innerHTML = '';
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false; // Uncheck "Select All" when reloading data
+            }
+
+            // Filter data
+            let filteredData = suratData;
+            if (filterJenis !== 'all') {
+                filteredData = filteredData.filter(s => s.jenisSurat === filterJenis);
+            }
+            if (filterArsip !== 'all') {
+                filteredData = filteredData.filter(s => filterArsip === 'arsip' ? s.arsip : !s.arsip);
+            }
+            if (searchTerm) {
+                filteredData = filteredData.filter(s => 
+                    s.nomorSurat.toLowerCase().includes(searchTerm) ||
+                    s.perihal.toLowerCase().includes(searchTerm) ||
+                    s.pengirim.toLowerCase().includes(searchTerm) ||
+                    (s.nomorKontak && s.nomorKontak.includes(searchTerm))
+                );
+            }
+
+            // Sort by date (newest first)
+            filteredData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            // Show empty state if no data
+            if (filteredData.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            // Add rows to table
+            filteredData.forEach((surat, index) => {
+                const row = document.createElement('tr');
+                row.className = surat.arsip ? 'bg-yellow-50' : 'hover:bg-gray-50';
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <input type="checkbox" class="surat-checkbox" data-id="${surat.id}">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">${surat.nomorSurat}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-500">${formatDate(surat.tanggal)}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900">${surat.perihal}</div>
+                        <div class="text-sm text-gray-500">${surat.pengirim}</div>
+                        ${surat.nomorKontak ? `
+                        <div class="text-sm text-blue-500 mt-1">
+                            <i class="fas fa-phone-alt mr-1"></i>${surat.nomorKontak}
+                            ${surat.lastNotified ? `
+                            <span class="text-xs text-green-500 ml-2">
+                                <i class="fas fa-check-circle"></i> Notifikasi terkirim
+                            </span>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${surat.jenisSurat === 'masuk' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}">
+                            ${surat.jenisSurat === 'masuk' ? 'Masuk' : 'Keluar'}
+                        </span>
+                        ${surat.tipeSurat ? `
+                        <span class="mt-1 block px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTipeSuratClass(surat.tipeSurat)}">
+                            ${surat.tipeSurat.charAt(0).toUpperCase() + surat.tipeSurat.slice(1)}
+                        </span>
+                        ` : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${surat.arsip ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">
+                            ${surat.arsip ? 'Di Arsipkan' : 'Aktif'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        ${surat.file ? `<button onclick="showFile('${surat.id}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Lihat File">
+                            <i class="fas fa-file-alt"></i>
+                        </button>` : ''}
+                        <button onclick="toggleArsip('${surat.id}')" class="${surat.arsip ? 'text-green-600 hover:text-green-900' : 'text-yellow-600 hover:text-yellow-900'} mr-2" title="${surat.arsip ? 'Batalkan Arsip' : 'Arsipkan'}">
+                            <i class="fas ${surat.arsip ? 'fa-undo' : 'fa-archive'}"></i>
+                        </button>
+                        ${surat.nomorKontak ? `
+                        <button onclick="sendNotification('${surat.id}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Kirim Notifikasi">
+                            <i class="fas fa-bell"></i>
+                        </button>
+                        ` : ''}
+                        <button onclick="showDeleteModal('${surat.id}', '${surat.nomorSurat}')" class="text-red-600 hover:text-red-900" title="Hapus">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                suratTableBody.appendChild(row);
+            });
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            return new Date(dateString).toLocaleDateString('id-ID', options);
+        }
+
+        // Get tipe surat class
+        function getTipeSuratClass(tipe) {
+            switch(tipe) {
+                case 'biasa': return 'bg-gray-100 text-gray-800';
+                case 'penting': return 'bg-red-100 text-red-800';
+                case 'rahasia': return 'bg-indigo-100 text-indigo-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Filter surat
+        function filterSurat(jenis, arsipStatus) {
+            // Update active tab
+            document.querySelectorAll('[onclick^="filterSurat"]').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                btn.classList.add('text-gray-500', 'hover:text-gray-700');
+            });
+
+            const activeTab = document.querySelector(`[onclick="filterSurat('${jenis}', document.getElementById('arsipFilter').value)"]`);
+            activeTab.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            activeTab.classList.remove('text-gray-500', 'hover:text-gray-700');
+
+            // Load filtered data
+            loadSuratData(jenis, arsipStatus);
+        }
+
+        // Handle search input with debounce
+        let searchTimeout;
+        function handleSearchInput() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const activeTab = document.querySelector('.border-b-2');
+                const jenis = activeTab.getAttribute('onclick').split('(')[1].split(',')[0].replace(/'/g, '');
+                const arsipStatus = document.getElementById('arsipFilter').value;
+                loadSuratData(jenis, arsipStatus, searchTerm);
+            }, 300);
+        }
+
+        // Reset filter
+        function resetFilter() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('arsipFilter').value = 'all';
+            filterSurat('all', 'all');
+            loadSuratData('all', 'all');
+        }
+
+        // Update statistik
+        function updateStatistik() {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            
+            document.getElementById('totalSurat').textContent = suratData.length;
+            document.getElementById('totalMasuk').textContent = suratData.filter(s => s.jenisSurat === 'masuk').length;
+            document.getElementById('totalKeluar').textContent = suratData.filter(s => s.jenisSurat === 'keluar').length;
+            document.getElementById('totalArsip').textContent = suratData.filter(s => s.arsip).length;
+        }
+
+        // Show delete modal
+        function showDeleteModal(id, nomorSurat) {
+            document.getElementById('suratToDelete').textContent = nomorSurat;
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('hidden');
+            
+            document.getElementById('confirmDelete').onclick = function() {
+                deleteSurat(id);
+                modal.classList.add('hidden');
+            };
+        }
+
+        // Delete surat
+        function deleteSurat(id) {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const filteredData = suratData.filter(s => s.id != id);
+            localStorage.setItem('suratData', JSON.stringify(filteredData));
+            
+            // Reload data based on current filter
+            const activeTab = document.querySelector('.border-b-2');
+            const jenis = activeTab.getAttribute('onclick').split('(')[1].split(',')[0].replace(/'/g, '');
+            const arsipStatus = document.getElementById('arsipFilter').value;
+            loadSuratData(jenis, arsipStatus);
+            updateStatistik();
+        }
+
+        // Toggle arsip status
+        function toggleArsip(id) {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const index = suratData.findIndex(s => s.id == id);
+            
+            if (index >= 0) {
+                suratData[index].arsip = !suratData[index].arsip;
+                localStorage.setItem('suratData', JSON.stringify(suratData));
+                
+                // Reload data based on current filter
+                const activeTab = document.querySelector('.border-b-2');
+                const jenis = activeTab.getAttribute('onclick').split('(')[1].split(',')[0].replace(/'/g, '');
+                const arsipStatus = document.getElementById('arsipFilter').value;
+                loadSuratData(jenis, arsipStatus);
+                updateStatistik();
+            }
+        }
+
+        // Send notification
+        function sendNotification(id) {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const surat = suratData.find(s => s.id == id);
+            
+            if (surat && surat.nomorKontak) {
+                // In a real app, you would call your notification API here
+                // This is just a simulation
+                console.log(`Mengirim notifikasi ke ${surat.nomorKontak} tentang surat ${surat.nomorSurat}`);
+                
+                // Update last notified timestamp
+                surat.lastNotified = new Date().toISOString();
+                localStorage.setItem('suratData', JSON.stringify(suratData));
+                
+                // Reload data
+                const activeTab = document.querySelector('.border-b-2');
+                const jenis = activeTab.getAttribute('onclick').split('(')[1].split(',')[0].replace(/'/g, '');
+                const arsipStatus = document.getElementById('arsipFilter').value;
+                loadSuratData(jenis, arsipStatus);
+                
+                alert(`Notifikasi telah dikirim ke ${surat.nomorKontak}`);
+            } else {
+                alert('Surat tidak memiliki nomor kontak yang valid');
+            }
+        }
+
+        // Show file
+        function showFile(id) {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const surat = suratData.find(s => s.id == id);
+            
+            if (!surat || !surat.file) return;
+            
+            const modal = document.getElementById('fileModal');
+            const content = document.getElementById('fileModalContent');
+            document.getElementById('fileModalTitle').textContent = `File: ${surat.file.name}`;
+            
+            content.innerHTML = '';
+            
+            if (surat.file.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = `data:${surat.file.type};base64,${surat.file.data}`;
+                img.className = 'max-w-full max-h-screen';
+                img.alt = 'File surat ' + surat.nomorSurat;
+                content.appendChild(img);
+            } else if (surat.file.type === 'application/pdf') {
+                const embed = document.createElement('embed');
+                embed.src = `data:application/pdf;base64,${surat.file.data}`;
+                embed.type = 'application/pdf';
+                embed.width = '100%';
+                embed.height = '500px';
+                content.appendChild(embed);
+                
+                const downloadBtn = document.createElement('a');
+                downloadBtn.href = `data:application/pdf;base64,${surat.file.data}`;
+                downloadBtn.download = surat.file.name;
+                downloadBtn.className = 'mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700';
+                downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Unduh File';
+                content.appendChild(downloadBtn);
+            } else {
+                const downloadBtn = document.createElement('a');
+                downloadBtn.href = `data:${surat.file.type};base64,${surat.file.data}`;
+                downloadBtn.download = surat.file.name;
+                downloadBtn.className = 'mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700';
+                downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Unduh File';
+                content.appendChild(downloadBtn);
+                
+                const info = document.createElement('p');
+                info.className = 'mt-2 text-sm text-gray-500';
+                info.textContent = `Format file tidak dapat ditampilkan, silahkan unduh untuk melihat.`;
+                content.appendChild(info);
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        // Export to Excel function
+        function exportToExcel() {
+            const type = reportTypeSelect.value;
+            const year = reportYearSelect.value;
+            const month = type === 'monthly' ? reportMonthSelect.value : null;
+            
+            // Prepare data
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const filtered = suratData.filter(surat => {
+                const suratDate = new Date(surat.tanggal);
+                const suratYear = suratDate.getFullYear().toString();
+                const suratMonth = (suratDate.getMonth() + 1).toString().padStart(2, '0');
+                
+                if (type === 'monthly') {
+                    return suratYear === year && suratMonth === month;
+                } else {
+                    return suratYear === year;
+                }
+            });
+
+            // Format data for Excel
+            const excelData = filtered.map(surat => ({
+                'No. Surat': surat.nomorSurat,
+                'Tanggal': formatDate(surat.tanggal),
+                'Perihal': surat.perihal,
+                'Pengirim/Penerima': surat.pengirim,
+                'Jenis': surat.jenisSurat === 'masuk' ? 'Masuk' : 'Keluar',
+                'Tipe': surat.tipeSurat || '-',
+                'Keterangan': surat.keterangan || '-',
+                'Status Arsip': surat.arsip ? 'Di Arsipkan' : 'Aktif'
+            }));
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            
+            // Add to workbook
+            XLSX.utils.book_append_sheet(wb, ws, "Data Surat");
+            
+            // Generate filename
+            let fileName = `Laporan_Surat_${year}`;
+            if (type === 'monthly') {
+                const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                fileName += `_${monthNames[parseInt(month)-1]}`;
+            }
+            fileName += '.xlsx';
+            
+            // Export
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // Initialize Report Year Select
+        function populateReportYears() {
+            const currentYear = new Date().getFullYear();
+            for (let i = currentYear; i >= 2020; i--) { // Adjust start year as needed
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                reportYearSelect.appendChild(option);
+            }
+            reportYearSelect.value = currentYear; // Set default to current year
+        }
+
+        // Toggle Month Select based on Report Type
+        reportTypeSelect.addEventListener('change', function() {
+            if (this.value === 'monthly') {
+                monthSelectContainer.classList.remove('hidden');
+            } else {
+                monthSelectContainer.classList.add('hidden');
+            }
+        });
+
+        // Generate Report Function
+        function generateReport() {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const type = reportTypeSelect.value;
+            const year = reportYearSelect.value;
+            const month = reportMonthSelect.value;
+
+            let totalMasuk = 0;
+            let totalKeluar = 0;
+
+            suratData.forEach(surat => {
+                const suratDate = new Date(surat.tanggal);
+                const suratYear = suratDate.getFullYear().toString();
+                const suratMonth = (suratDate.getMonth() + 1).toString().padStart(2, '0');
+
+                if (type === 'monthly') {
+                    if (suratYear === year && suratMonth === month) {
+                        if (surat.jenisSurat === 'masuk') {
+                            totalMasuk++;
+                        } else if (surat.jenisSurat === 'keluar') {
+                            totalKeluar++;
+                        }
+                    }
+                } else if (type === 'yearly') {
+                    if (suratYear === year) {
+                        if (surat.jenisSurat === 'masuk') {
+                            totalMasuk++;
+                        } else if (surat.jenisSurat === 'keluar') {
+                            totalKeluar++;
+                        }
+                    }
+                }
+            });
+
+            reportMasukSpan.textContent = totalMasuk;
+            reportKeluarSpan.textContent = totalKeluar;
+            reportResultDiv.classList.remove('hidden');
+        }
+
+        // Save all surat data and their original files to PC
+        function saveAllSuratToPC() {
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            if (suratData.length === 0) {
+                alert('Tidak ada data surat untuk disimpan.');
+                return;
+            }
+
+            // Option 1: Save all data as a single JSON file (metadata only)
+            // Create a copy of suratData without the large Base64 file data for the JSON export
+            const metadataOnlySuratData = suratData.map(s => {
+                const { file, ...rest } = s; // Destructure to exclude 'file'
+                return rest;
+            });
+
+            const dataStr = JSON.stringify(metadataOnlySuratData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `data_surat_bkdd_metadata_all_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('Metadata semua data surat telah disimpan ke PC Anda sebagai JSON.');
+
+            // Option 2: Download original files for each surat
+            let filesDownloaded = 0;
+            suratData.forEach(surat => {
+                if (surat.file && surat.file.data && surat.file.name && surat.file.type) {
+                    try {
+                        const byteCharacters = atob(surat.file.data);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const fileBlob = new Blob([byteArray], { type: surat.file.type });
+                        const fileUrl = URL.createObjectURL(fileBlob);
+
+                        const fileA = document.createElement('a');
+                        fileA.href = fileUrl;
+                        // Sanitize filename: replace non-alphanumeric characters with underscore
+                        const sanitizedNomorSurat = surat.nomorSurat.replace(/[^a-zA-Z0-9]/g, '_');
+                        fileA.download = `BKDD_Surat_${sanitizedNomorSurat}_${surat.file.name}`; 
+                        document.body.appendChild(fileA);
+                        fileA.click();
+                        document.body.removeChild(fileA);
+                        URL.revokeObjectURL(fileUrl);
+                        filesDownloaded++;
+                    } catch (e) {
+                        console.error(`Gagal mengunduh file untuk surat ${surat.nomorSurat}:`, e);
+                    }
+                }
+            });
+
+            if (filesDownloaded > 0) {
+                alert(`${filesDownloaded} file surat asli sedang diunduh. Periksa folder unduhan Anda.`);
+            } else {
+                alert('Tidak ada file asli yang ditemukan untuk diunduh.');
+            }
+        }
+
+        // Function to toggle all checkboxes
+        function toggleAllCheckboxes(checked) {
+            const checkboxes = document.querySelectorAll('.surat-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = checked;
+            });
+        }
+
+        // Save selected surat data and their original files to a single ZIP file
+        async function saveSelectedSuratToZip() {
+            const selectedCheckboxes = document.querySelectorAll('.surat-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Pilih setidaknya satu surat untuk disimpan.');
+                return;
+            }
+
+            const selectedIds = Array.from(selectedCheckboxes).map(checkbox => parseInt(checkbox.dataset.id));
+            const suratData = JSON.parse(localStorage.getItem('suratData'));
+            const selectedSurat = suratData.filter(surat => selectedIds.includes(surat.id));
+
+            if (selectedSurat.length === 0) {
+                alert('Tidak ada data surat yang cocok dengan pilihan Anda.');
+                return;
+            }
+
+            const zip = new JSZip();
+            let filesAddedToZip = 0;
+
+            // Add metadata JSON to the zip
+            const metadataOnlySelectedSurat = selectedSurat.map(s => {
+                const { file, ...rest } = s; // Exclude 'file' data from metadata JSON
+                return rest;
+            });
+            zip.file(`metadata_surat_terpilih_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(metadataOnlySelectedSurat, null, 2));
+
+            // Add original files to the zip
+            selectedSurat.forEach(surat => {
+                if (surat.file && surat.file.data && surat.file.name && surat.file.type) {
+                    try {
+                        const byteCharacters = atob(surat.file.data);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        
+                        // Sanitize filename for ZIP entry: allow dots for file extensions
+                        const sanitizedNomorSurat = surat.nomorSurat.replace(/[^a-zA-Z0-9.]/g, '_'); 
+                        const zipFileName = `files/BKDD_Surat_${sanitizedNomorSurat}_${surat.file.name}`;
+                        
+                        zip.file(zipFileName, byteArray, { binary: true });
+                        filesAddedToZip++;
+                    } catch (e) {
+                        console.error(`Gagal menambahkan file untuk surat ${surat.nomorSurat} ke ZIP:`, e);
+                    }
+                }
+            });
+
+            if (filesAddedToZip === 0 && selectedSurat.length > 0) {
+                alert('Tidak ada file asli yang ditemukan untuk ditambahkan ke ZIP dari surat yang dipilih. Hanya metadata JSON yang akan diunduh.');
+            } else if (filesAddedToZip === 0 && selectedSurat.length === 0) {
+                alert('Tidak ada surat yang dipilih atau file yang ditemukan.');
+                return;
+            }
+
+            // Generate the ZIP file
+            try {
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+                saveAs(zipBlob, `surat_terpilih_bkdd_${new Date().toISOString().slice(0, 10)}.zip`);
+                alert(`File ZIP berisi ${selectedSurat.length} surat (dan ${filesAddedToZip} file asli) telah dibuat dan diunduh.`);
+            } catch (error) {
+                console.error("Gagal membuat atau mengunduh file ZIP:", error);
+                alert("Terjadi kesalahan saat membuat atau mengunduh file ZIP.");
+            }
+        }
+    </script>
+</body>
+</html>
